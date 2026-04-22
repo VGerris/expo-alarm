@@ -15,20 +15,47 @@ class AlarmReceiver : BroadcastReceiver() {
         private const val CHANNEL_ID = "alarm_channel"
         private const val CHANNEL_NAME = "Alarms"
         private const val CHANNEL_DESCRIPTION = "Notifications for scheduled alarms"
+        const val EXTRA_IDENTIFIER = "identifier"
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_BODY = "body"
+        const val EXTRA_SOUND = "sound"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val identifier = intent.getStringExtra("identifier") ?: return
         val title = intent.getStringExtra("title") ?: "Alarm"
         val body = intent.getStringExtra("body")
-        val repeating = intent.getBooleanExtra("repeating", false)
-        val repeatInterval = intent.getLongExtra("repeatInterval", 0L)
         val sound = intent.getStringExtra("sound")
 
-        // Create notification channel (required for Android 8.0+)
         createNotificationChannel(context)
 
-        // Build and show notification
+        // Start the alarm service to play sound in background
+        val serviceIntent = Intent(context, com.expo.modules.alarm.AlarmService::class.java).apply {
+            action = "START_ALARM"
+            putExtra(EXTRA_IDENTIFIER, identifier)
+            putExtra(EXTRA_TITLE, title)
+            putExtra(EXTRA_BODY, body)
+            putExtra(EXTRA_SOUND, sound)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+
+        // Launch AlarmActivity to show alarm UI over lock screen
+        val activityIntent = Intent(context, com.expo.modules.alarm.AlarmActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("identifier", identifier)
+            putExtra("title", title)
+            putExtra("body", body)
+            putExtra("sound", sound)
+        }
+        context.startActivity(activityIntent)
+
+        // Also show a notification as a fallback
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
@@ -37,48 +64,8 @@ class AlarmReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
 
-        // Create dismiss action
-        val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = "DISMISS_ACTION"
-            putExtra("identifier", identifier)
-        }
-        val dismissPendingIntent = PendingIntent.getBroadcast(
-            context,
-            identifier.hashCode(),
-            dismissIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        notificationBuilder.addAction(
-            android.R.drawable.ic_menu_close_clear_cancel,
-            "Dismiss",
-            dismissPendingIntent
-        )
-
-        // Create snooze action
-        val snoozeIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = "SNOOZE_ACTION"
-            putExtra("identifier", identifier)
-        }
-        val snoozePendingIntent = PendingIntent.getBroadcast(
-            context,
-            identifier.hashCode() + 1,
-            snoozeIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        notificationBuilder.addAction(
-            android.R.drawable.ic_media_play,
-            "Snooze",
-            snoozePendingIntent
-        )
-
         val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(identifier.hashCode(), notificationBuilder.build())
-
-        // TODO: Send event to React Native
-        // This would require access to the React Native bridge, which is complex in a BroadcastReceiver
-        // Consider using a service or other mechanism for event delivery
     }
 
     private fun createNotificationChannel(context: Context) {

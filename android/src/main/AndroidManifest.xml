@@ -34,8 +34,17 @@
                 <action android:name="SNOOZE_ACTION" />
             </intent-filter>
         </receiver>
+        <activity
+            android:name="com.expo.modules.alarm.AlarmActivity"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:configChanges="orientation|screenSize"
+            />
         <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
-        <service 
+        <service
             android:name="com.expo.modules.alarm.AlarmService"
             android:foregroundServiceType="mediaPlayback"
         />
