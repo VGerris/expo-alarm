@@ -2,8 +2,9 @@ import ExpoModulesCore
 import UserNotifications
 import Foundation
 
-@available(iOS 16.0, *)
+#if canImport(AlarmKit)
 import AlarmKit
+#endif
 
 public class ExpoAlarmModule: Module {
   private var storedAlarms: [String: [String: Any]] = [:]
@@ -66,6 +67,7 @@ public class ExpoAlarmModule: Module {
         // Cancel existing alarm with same identifier
         await self.cancelAlarmInternal(identifier: identifier)
         
+        #if canImport(AlarmKit)
         if #available(iOS 16.0, *) {
           // Use AlarmKit for iOS 16+
           try await self.scheduleWithAlarmKit(
@@ -89,6 +91,18 @@ public class ExpoAlarmModule: Module {
             sound: sound
           )
         }
+        #else
+        // Use UserNotifications when AlarmKit isn't available
+        try await self.scheduleWithNotifications(
+          identifier: identifier,
+          title: title,
+          body: body,
+          date: date,
+          repeating: repeating,
+          repeatInterval: repeatInterval,
+          sound: sound
+        )
+        #endif
         
         // Store alarm info
         let alarmInfo: [String: Any] = [
@@ -151,9 +165,17 @@ public class ExpoAlarmModule: Module {
   
   @available(iOS 16.0, *)
   private func scheduleWithAlarmKit(identifier: String, title: String, body: String?, date: Date, repeating: Bool, repeatInterval: Double?, sound: String?) async throws {
-    // AlarmKit implementation would go here
-    // For now, fall back to notifications since AlarmKit has limited availability
-    try await scheduleWithNotifications(identifier: identifier, title: title, body: body, date: date, repeating: repeating, repeatInterval: repeatInterval, sound: sound)
+    #if canImport(AlarmKit)
+      let alarm = CALarm.alarm(dateComponents: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date), text: title)
+      if repeating, let interval = repeatInterval {
+        alarm.repeatInterval = .minute(Int(interval / 1000))
+      }
+      let alarmItem = CAAlarmItem(identifier: identifier, action: UIMutableUserNotificationAction(), alarms: [alarm])
+      try await CAAlarm.set(alarmItem)
+    #else
+      // Fallback to notifications if AlarmKit isn't available
+      try await scheduleWithNotifications(identifier: identifier, title: title, body: body, date: date, repeating: repeating, repeatInterval: repeatInterval, sound: sound)
+    #endif
   }
   
   private func scheduleWithNotifications(identifier: String, title: String, body: String?, date: Date, repeating: Bool, repeatInterval: Double?, sound: String?) async throws {

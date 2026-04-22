@@ -244,13 +244,13 @@ class ExpoAlarmModule : Module() {
   private fun clearAllAlarms() {
     val editor = sharedPreferences.edit()
     val allEntries = sharedPreferences.all
-    
+
     for (key in allEntries.keys) {
       if (key.startsWith("alarm_")) {
         editor.remove(key)
       }
     }
-    
+
     editor.apply()
   }
 }

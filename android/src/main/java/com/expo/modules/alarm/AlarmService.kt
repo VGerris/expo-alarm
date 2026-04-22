@@ -44,7 +44,7 @@ class AlarmService : Service() {
                 playAlarmSound(soundUri)
             }
             "STOP_ALARM" -> {
-                val identifier = intent.getStringExtra("identifier") ?: "default"
+               val identifier = intent.getStringExtra(AlarmReceiver.EXTRA_IDENTIFIER) ?: "default"
                 stopAlarm(identifier)
             }
         }
@@ -66,7 +66,7 @@ class AlarmService : Service() {
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-            "Calarm:AlarmWakeLock"
+            "ExpoAlarm:AlarmWakeLock"
         )
         wakeLock?.acquire(5 * 60 * 1000L)
     }
@@ -142,7 +142,18 @@ class AlarmService : Service() {
         stopSelf()
 
         val notificationManager = NotificationManagerCompat.from(this)
-        notificationManager.cancel(identifier.hashCode())
+        notificationManager.cancel(notificationIdFor(identifier))
+    }
+
+    companion object {
+        // Deterministic notification ID to avoid hashCode collisions
+        fun notificationIdFor(identifier: String): Int {
+            var hash = 1
+            for (c in identifier) {
+                hash = 31 * hash + c.code
+            }
+            return hash.coerceIn(0, Int.MAX_VALUE / 2)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -161,7 +172,7 @@ class AlarmService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText("Alarm is ringing")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.expo_alarm_icon)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()

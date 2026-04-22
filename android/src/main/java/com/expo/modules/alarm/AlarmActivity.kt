@@ -8,6 +8,8 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import android.widget.LinearLayout
+import androidx.core.app.NotificationManagerCompat
+import com.expo.modules.alarm.receivers.AlarmReceiver
 
 class AlarmActivity : Activity() {
     private var alarmIdentifier: String? = null
@@ -30,7 +32,7 @@ class AlarmActivity : Activity() {
         }
 
         val titleText = TextView(this).apply {
-            text = intent.getStringExtra("title") ?: "Alarm!"
+            text = intent.getStringExtra(AlarmReceiver.EXTRA_TITLE) ?: "Alarm!"
             textSize = 36f
             setTextColor(0xFFFFFFFF.toInt())
             setPadding(0, 40, 0, 20)
@@ -38,7 +40,7 @@ class AlarmActivity : Activity() {
         }
 
         val bodyText = TextView(this).apply {
-            text = intent.getStringExtra("body") ?: "Wake up!"
+            text = intent.getStringExtra(AlarmReceiver.EXTRA_BODY) ?: "Wake up!"
             textSize = 20f
             setTextColor(0xFFCCCCCC.toInt())
             setPadding(0, 0, 0, 40)
@@ -62,19 +64,19 @@ class AlarmActivity : Activity() {
 
         setContentView(rootLayout)
 
-        alarmIdentifier = intent.getStringExtra("identifier")
+        alarmIdentifier = intent.getStringExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER)
     }
 
     private fun dismissAlarm() {
         val serviceIntent = Intent(this, AlarmService::class.java).apply {
             action = "STOP_ALARM"
-            putExtra("identifier", alarmIdentifier)
+            putExtra(AlarmReceiver.EXTRA_IDENTIFIER, alarmIdentifier)
         }
         startService(serviceIntent)
 
         val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
         val cancelIntent = Intent(this, com.expo.modules.alarm.receivers.AlarmReceiver::class.java).apply {
-            putExtra("identifier", alarmIdentifier)
+            putExtra(AlarmReceiver.EXTRA_IDENTIFIER, alarmIdentifier)
         }
         val pendingIntent = android.app.PendingIntent.getBroadcast(
             this,
@@ -83,6 +85,10 @@ class AlarmActivity : Activity() {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+
+        // Dismiss notification
+        val notificationManager = NotificationManagerCompat.from(this)
+        notificationManager.cancel(AlarmService.notificationIdFor(alarmIdentifier ?: "default"))
 
         finish()
     }
