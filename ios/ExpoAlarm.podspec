@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
     :tvos => '15.1'
   }
   s.swift_version  = '5.4'
-  s.source         = { git: 'https://github.com/vall370/expo-alarm' }
+  s.source         = { git: 'https://github.com/VGerris/expo-alarm' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

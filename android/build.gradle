@@ -1,4 +1,21 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath 'com.android.tools.build:gradle:8.2.1'
+    classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
+  }
+}
+
+// Simple helper that allows the root project to override versions declared by this library.
+ext.safeExtGet = { prop, fallback ->
+  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 
 group = 'expo.modules.alarm'
 version = '0.1.0'
@@ -16,12 +33,6 @@ def useManagedAndroidSdkVersions = false
 if (useManagedAndroidSdkVersions) {
   useDefaultAndroidSdkVersions()
 } else {
-  buildscript {
-    // Simple helper that allows the root project to override versions declared by this library.
-    ext.safeExtGet = { prop, fallback ->
-      rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
-    }
-  }
   project.android {
     compileSdkVersion safeExtGet("compileSdkVersion", 34)
     defaultConfig {
@@ -32,7 +43,7 @@ if (useManagedAndroidSdkVersions) {
 }
 
 android {
-  namespace "expo.modules.alarm"
+  namespace "com.expo.modules.alarm"
   defaultConfig {
     versionCode 1
     versionName "0.1.0"

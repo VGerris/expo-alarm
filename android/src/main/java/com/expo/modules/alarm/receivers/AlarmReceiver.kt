@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import expo.modules.alarm.ExpoAlarmModule
 
 class AlarmReceiver : BroadcastReceiver() {
     companion object {
@@ -19,13 +20,26 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_SOUND = "sound"
+        const val EXTRA_REPEATING = "repeating"
+        const val EXTRA_REPEAT_INTERVAL = "repeatInterval"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val identifier = intent.getStringExtra("identifier") ?: return
-        val title = intent.getStringExtra("title") ?: "Alarm"
-        val body = intent.getStringExtra("body")
-        val sound = intent.getStringExtra("sound")
+        val identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
+        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Alarm"
+        val body = intent.getStringExtra(EXTRA_BODY)
+        val sound = intent.getStringExtra(EXTRA_SOUND)
+
+        // Emit alarmTriggered event to React Native
+        ExpoAlarmModule.instance?.emit("alarmTriggered", mapOf(
+            "identifier" to identifier,
+            "title" to title,
+            "body" to body
+        ))
+
+        // Persist firing state so React Native can detect it on resume
+        val prefs = context.getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_alarm_firing", true).putString("firing_alarm_id", identifier).apply()
 
         createNotificationChannel(context)
 
@@ -36,6 +50,8 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_BODY, body)
             putExtra(EXTRA_SOUND, sound)
+            putExtra(EXTRA_REPEATING, intent.getBooleanExtra(EXTRA_REPEATING, false))
+            putExtra(EXTRA_REPEAT_INTERVAL, intent.getLongExtra(EXTRA_REPEAT_INTERVAL, 0L))
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)
@@ -57,15 +73,16 @@ class AlarmReceiver : BroadcastReceiver() {
 
         // Also show a notification as a fallback
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.expo_alarm_icon)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setContentIntent(createOpenActivityPendingIntent(context, identifier, title, body))
 
         val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.notify(identifier.hashCode(), notificationBuilder.build())
+        notificationManager.notify(com.expo.modules.alarm.AlarmService.notificationIdFor(identifier), notificationBuilder.build())
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -80,5 +97,25 @@ class AlarmReceiver : BroadcastReceiver() {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
+    }
+
+    private fun createOpenActivityPendingIntent(
+        context: Context,
+        identifier: String,
+        title: String,
+        body: String?
+    ): PendingIntent? {
+        val activityIntent = Intent(context, com.expo.modules.alarm.AlarmActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_IDENTIFIER, identifier)
+            putExtra(EXTRA_TITLE, title)
+            putExtra(EXTRA_BODY, body)
+        }
+        return PendingIntent.getActivity(
+            context,
+            identifier.hashCode(),
+            activityIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }

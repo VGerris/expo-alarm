@@ -112,7 +112,7 @@ Module automatically declares the following in AndroidManifest.xml:
 - `android.permission.WAKE_LOCK` - To wake device when alarm triggers
 
 ## Package Information
-- **Package Name**: `@vall370/expo-alarm`
+- **Package Name**: `@VGerris/expo-alarm`
 - **Version**: 0.1.0
-- **Repository**: https://github.com/vall370/expo-alarm
+- **Repository**: https://github.com/VGerris/expo-alarm
 - **NPM Registry**: https://registry.npmjs.org/

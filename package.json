@@ -1,6 +1,6 @@
 {
-  "name": "@vall370/expo-alarm",
-  "version": "0.1.5",
+  "name": "@vgerris/expo-alarm",
+  "version": "0.1.6",
   "description": "Cross-platform alarm scheduling module for Expo and React Native with Android AlarmManager, iOS UserNotifications, and Web support",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -31,14 +31,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vall370/expo-alarm.git"
+    "url": "git+https://github.com/VGerris/expo-alarm.git"
   },
   "bugs": {
-    "url": "https://github.com/vall370/expo-alarm/issues"
+    "url": "https://github.com/VGerris/expo-alarm/issues"
   },
-  "author": "Valdemar Johannesson <vall395@gmail.com> (https://github.com/vall370)",
+  "author": "Vincent Gerris <vgerris@gmail.com> (https://github.com/VGerris)",
   "license": "MIT",
-  "homepage": "https://github.com/vall370/expo-alarm#readme",
+  "homepage": "https://github.com/VGerris/expo-alarm#readme",
   "files": [
     "build",
     "android",
