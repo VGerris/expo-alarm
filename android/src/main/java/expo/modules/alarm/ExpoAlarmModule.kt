@@ -199,7 +199,12 @@ class ExpoAlarmModule : Module() {
           action = "STOP_ALARM"
           putExtra("identifier", identifier)
         }
-        context.stopService(serviceIntent)
+        // Use startService so onStartCommand executes with STOP_ALARM action
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          context.startForegroundService(serviceIntent)
+        } else {
+          context.startService(serviceIntent)
+        }
         promise.resolve(null)
       } catch (e: Exception) {
         promise.reject("ERR_ALARM_CANCEL", e.message, e)
