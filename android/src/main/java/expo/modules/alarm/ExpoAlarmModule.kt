@@ -16,21 +16,57 @@ import com.google.gson.reflect.TypeToken
 import java.util.*
 
 class ExpoAlarmModule : Module() {
+  companion object {
+    const val PREFS_KEY = "ExpoAlarmModule"
+    const val FIRING_KEY = "is_alarm_firing"
+    const val FIRING_ALARM_ID_KEY = "firing_alarm_id"
+
+    @Volatile
+    var instance: ExpoAlarmModule? = null
+  }
+
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
-  
+
   private val alarmManager: AlarmManager
     get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-  
+
   private val sharedPreferences: SharedPreferences
-    get() = context.getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
-  
+    get() = context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
+
   private val gson = Gson()
+
+  private fun setFiringState(isFiring: Boolean, alarmId: String? = null) {
+    val editor = sharedPreferences.edit()
+    editor.putBoolean(FIRING_KEY, isFiring)
+    if (alarmId != null) {
+      editor.putString(FIRING_ALARM_ID_KEY, alarmId)
+    } else {
+      editor.remove(FIRING_ALARM_ID_KEY)
+    }
+    editor.apply()
+  }
+
+  private fun isFiring(): Boolean {
+    return sharedPreferences.getBoolean(FIRING_KEY, false)
+  }
+
+  private fun getFiringAlarmId(): String? {
+    return sharedPreferences.getString(FIRING_ALARM_ID_KEY, null)
+  }
 
   override fun definition() = ModuleDefinition {
     Name("ExpoAlarm")
 
     Events("alarmTriggered", "alarmDismissed")
+
+    OnCreate {
+      instance = this@ExpoAlarmModule
+    }
+
+    OnDestroy {
+      instance = null
+    }
 
     Function("isSupported") {
       true // Android always supports alarms
@@ -212,8 +248,18 @@ class ExpoAlarmModule : Module() {
   private fun getStoredAlarmInfo(identifier: String): Map<String, Any?>? {
     val json = sharedPreferences.getString("alarm_$identifier", null)
     return if (json != null) {
-      val type = object : TypeToken<Map<String, Any?>>() {}.type
-      gson.fromJson(json, type)
+      val type = object : TypeToken<MutableMap<String, Any?>>() {}.type
+      val alarmInfo: MutableMap<String, Any?> = gson.fromJson(json, type)
+      
+      // Fix Gson converting Long/Int to Double
+      if (alarmInfo.containsKey("date") && alarmInfo["date"] is Double) {
+        alarmInfo["date"] = (alarmInfo["date"] as Double).toLong()
+      }
+      if (alarmInfo.containsKey("repeatInterval") && alarmInfo["repeatInterval"] is Double) {
+        alarmInfo["repeatInterval"] = (alarmInfo["repeatInterval"] as Double).toLong()
+      }
+      
+      alarmInfo
     } else {
       null
     }
@@ -233,7 +279,16 @@ class ExpoAlarmModule : Module() {
       if (key.startsWith("alarm_") && value is String) {
         val identifier = key.removePrefix("alarm_")
         val type = object : TypeToken<Map<String, Any?>>() {}.type
-        val alarmInfo: Map<String, Any?> = gson.fromJson(value, type)
+        val alarmInfo: MutableMap<String, Any?> = gson.fromJson(value, type)
+        
+        // Ensure numeric types are Long for consistency with AlarmScheduler
+        if (alarmInfo["date"] is Double) {
+          alarmInfo["date"] = (alarmInfo["date"] as Double).toLong()
+        }
+        if (alarmInfo["repeatInterval"] is Double) {
+          alarmInfo["repeatInterval"] = (alarmInfo["repeatInterval"] as? Double)?.toLong()
+        }
+        
         alarms[identifier] = alarmInfo
       }
     }

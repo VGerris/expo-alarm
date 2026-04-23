@@ -13,6 +13,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.expo.modules.alarm.receivers.AlarmReceiver
+import expo.modules.alarm.ExpoAlarmModule
 
 class AlarmService : Service() {
     companion object {
@@ -143,6 +144,13 @@ class AlarmService : Service() {
 
         val notificationManager = NotificationManagerCompat.from(this)
         notificationManager.cancel(notificationIdFor(identifier))
+
+        // Emit alarmDismissed event to React Native
+        ExpoAlarmModule.instance?.emit("alarmDismissed", mapOf("identifier" to identifier))
+
+        // Clear firing state
+        val prefs = getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_alarm_firing", false).remove("firing_alarm_id").apply()
     }
 
     companion object {

@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.LinearLayout
 import androidx.core.app.NotificationManagerCompat
 import com.expo.modules.alarm.receivers.AlarmReceiver
+import expo.modules.alarm.ExpoAlarmModule
 
 class AlarmActivity : Activity() {
     private var alarmIdentifier: String? = null
@@ -89,6 +90,10 @@ class AlarmActivity : Activity() {
         // Dismiss notification
         val notificationManager = NotificationManagerCompat.from(this)
         notificationManager.cancel(AlarmService.notificationIdFor(alarmIdentifier ?: "default"))
+
+        // Clear firing state
+        val prefs = getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_alarm_firing", false).remove("firing_alarm_id").apply()
 
         finish()
     }

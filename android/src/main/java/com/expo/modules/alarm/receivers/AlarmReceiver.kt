@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import expo.modules.alarm.ExpoAlarmModule
 
 class AlarmReceiver : BroadcastReceiver() {
     companion object {
@@ -28,6 +29,17 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: "Alarm"
         val body = intent.getStringExtra(EXTRA_BODY)
         val sound = intent.getStringExtra(EXTRA_SOUND)
+
+        // Emit alarmTriggered event to React Native
+        ExpoAlarmModule.instance?.emit("alarmTriggered", mapOf(
+            "identifier" to identifier,
+            "title" to title,
+            "body" to body
+        ))
+
+        // Persist firing state so React Native can detect it on resume
+        val prefs = context.getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_alarm_firing", true).putString("firing_alarm_id", identifier).apply()
 
         createNotificationChannel(context)
 
