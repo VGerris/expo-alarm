@@ -6,12 +6,13 @@ import Foundation
 import AlarmKit
 #endif
 
-public class ExpoAlarmModule: Module {
+@objc(ExpoAlarmModule)
+public class ExpoAlarmModule: BaseModule {
   private var storedAlarms: [String: [String: Any]] = [:]
   private let userDefaults = UserDefaults.standard
   private let alarmsKey = "ExpoAlarmModule_alarms"
 
-  public func definition() {
+  public func definition() -> ModuleDefinition {
     Name("ExpoAlarm")
 
     Events("alarmTriggered", "alarmDismissed")
