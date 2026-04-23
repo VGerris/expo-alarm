@@ -22,6 +22,21 @@ class ExpoAlarmModule : Module() {
     const val FIRING_ALARM_ID_KEY = "firing_alarm_id"
 
     @Volatile
+    private var eventEmitter: expo.modules.kotlin.events.EventEmitter? = null
+
+    fun sendEvent(eventName: String, body: Map<String, Any?>) {
+      val emitter = eventEmitter ?: run {
+        android.util.Log.e("ExpoAlarm", "sendEvent: eventEmitter is null!")
+        return
+      }
+      try {
+        emitter.emit(eventName, body)
+      } catch (e: Exception) {
+        android.util.Log.e("ExpoAlarm", "sendEvent: exception: ${e.message}", e)
+      }
+    }
+
+    @Volatile
     var instance: ExpoAlarmModule? = null
   }
 
@@ -61,6 +76,9 @@ class ExpoAlarmModule : Module() {
     Events("alarmTriggered", "alarmDismissed")
 
     OnCreate {
+      // Capture the JSI event emitter so we can use it from non-module code
+      val emitter = appContext.eventEmitter(this@ExpoAlarmModule)
+      eventEmitter = emitter
       instance = this@ExpoAlarmModule
     }
 

@@ -5,13 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
-import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.app.PendingIntent
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.expo.modules.alarm.receivers.AlarmReceiver
 import expo.modules.alarm.ExpoAlarmModule
 
@@ -22,8 +21,7 @@ class AlarmService : Service() {
         private const val NOTIFICATION_ID = 1
     }
 
-    private var mediaPlayer: MediaPlayer? = null
-    private var wakeLock: PowerManager.WakeLock? = null
+    private var vibrator: Vibrator? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -35,17 +33,18 @@ class AlarmService : Service() {
             "START_ALARM" -> {
                 val identifier = intent.getStringExtra(AlarmReceiver.EXTRA_IDENTIFIER) ?: "default"
                 val title = intent.getStringExtra(AlarmReceiver.EXTRA_TITLE) ?: "Alarm"
-                val soundUri = intent.getStringExtra(AlarmReceiver.EXTRA_SOUND)
 
-                acquireWakeLock()
-
-                val notification = createServiceNotification(title)
+                val notification = createServiceNotification(title, identifier)
                 startForeground(NOTIFICATION_ID, notification)
 
-                playAlarmSound(soundUri)
+                startVibration()
+
+                // Notify React Native that alarm is firing
+                android.util.Log.d("ExpoAlarm", "Service START_ALARM: about to send alarmTriggered for $identifier")
+                expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmTriggered", mapOf("identifier" to identifier))
             }
             "STOP_ALARM" -> {
-               val identifier = intent.getStringExtra(AlarmReceiver.EXTRA_IDENTIFIER) ?: "default"
+                val identifier = intent.getStringExtra("identifier") ?: "default"
                 stopAlarm(identifier)
             }
         }
@@ -59,116 +58,51 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopAlarmSound()
-        releaseWakeLock()
+        stopVibration()
     }
 
-    private fun acquireWakeLock() {
-        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-            "ExpoAlarm:AlarmWakeLock"
-        )
-        wakeLock?.acquire(5 * 60 * 1000L)
-    }
-
-    private fun releaseWakeLock() {
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
-        }
-        wakeLock = null
-    }
-
-    private fun playAlarmSound(soundUri: String?) {
-        try {
-            mediaPlayer = MediaPlayer().apply {
-                if (!soundUri.isNullOrEmpty()) {
-                    setDataSource(applicationContext, android.net.Uri.parse(soundUri))
-                } else {
-                    val alarmAlert = android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI
-                    setDataSource(applicationContext, alarmAlert)
-                }
-
-                val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                setAudioAttributes(audioAttributes)
-
-                isLooping = true
-                setVolume(1.0f, 1.0f)
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            try {
-                mediaPlayer = MediaPlayer().apply {
-                    val alarmAlert = android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI
-                    setDataSource(applicationContext, alarmAlert)
-                    val audioAttributes = AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                    setAudioAttributes(audioAttributes)
-                    isLooping = true
-                    prepare()
-                    start()
-                }
-            } catch (e2: Exception) {
-                e2.printStackTrace()
+    private fun startVibration() {
+        vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        if (vibrator?.hasVibrator() == true) {
+            val pattern = longArrayOf(0, 500, 200, 500, 200, 500)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(
+                    VibrationEffect.createWaveform(pattern, 0)
+                )
+            } else {
+                vibrator?.vibrate(pattern, 0)
             }
         }
     }
 
-    private fun stopAlarmSound() {
-        try {
-            mediaPlayer?.let {
-                if (it.isPlaying) {
-                    it.stop()
-                }
-                it.release()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        mediaPlayer = null
+    private fun stopVibration() {
+        vibrator?.cancel()
+        vibrator = null
     }
 
     fun stopAlarm(identifier: String) {
-        stopAlarmSound()
+        stopVibration()
         stopForeground(true)
         stopSelf()
 
-        val notificationManager = NotificationManagerCompat.from(this)
-        notificationManager.cancel(notificationIdFor(identifier))
-
-        // Emit alarmDismissed event to React Native
-        ExpoAlarmModule.instance?.emit("alarmDismissed", mapOf("identifier" to identifier))
-
-        // Clear firing state
-        val prefs = getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("is_alarm_firing", false).remove("firing_alarm_id").apply()
-    }
-
-    companion object {
-        // Deterministic notification ID to avoid hashCode collisions
-        fun notificationIdFor(identifier: String): Int {
-            var hash = 1
-            for (c in identifier) {
-                hash = 31 * hash + c.code
-            }
-            return hash.coerceIn(0, Int.MAX_VALUE / 2)
+        // Send broadcast to AlarmActivity that dismiss is confirmed
+        val broadcastIntent = Intent("com.expo.modules.alarm.DISMISS_CONFIRMED").apply {
+            putExtra("identifier", identifier)
         }
+        sendBroadcast(broadcastIntent)
+
+        // Notify React Native
+        expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmDismissed", mapOf("identifier" to identifier))
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_LOW
+            val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
                 description = "Channel for alarm service notifications"
+                enableLights(true)
+                enableVibration(true)
+                lightColor = 0xFF007AFF.toInt()
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java) as NotificationManager
@@ -176,13 +110,44 @@ class AlarmService : Service() {
         }
     }
 
-    private fun createServiceNotification(title: String): Notification {
+    private fun createServiceNotification(title: String, identifier: String): Notification {
+        // PendingIntent to bring the app to foreground when notification is tapped
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("alarm_firing", true)
+        }
+        val pendingLaunch = PendingIntent.getActivity(
+            this,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // PendingIntent to dismiss the alarm
+        val dismissIntent = Intent(this, com.expo.modules.alarm.receivers.NotificationActionReceiver::class.java).apply {
+            action = "DISMISS_ACTION"
+            putExtra("identifier", identifier)
+        }
+        val pendingDismiss = PendingIntent.getBroadcast(
+            this,
+            0,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText("Alarm is ringing")
-            .setSmallIcon(R.drawable.expo_alarm_icon)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
+            .setContentIntent(pendingLaunch)
+            .setAutoCancel(false)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Dismiss",
+                pendingDismiss
+            )
             .build()
     }
 }
