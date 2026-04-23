@@ -34,7 +34,7 @@ public class ExpoAlarmModule: NSObject, AnyModule {
     AsyncFunction("requestPermissionsAsync") { (promise: Promise) in
       UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
         if let error = error {
-          promise.reject("ERR_PERMISSIONS", error.localizedDescription, error)
+          promise.reject("ERR_PERMISSIONS", error.localizedDescription)
           return
         }
 
@@ -173,12 +173,14 @@ public class ExpoAlarmModule: NSObject, AnyModule {
   @available(iOS 16.0, *)
   private func scheduleWithAlarmKit(identifier: String, title: String, body: String?, date: Date, repeating: Bool, repeatInterval: Double?, sound: String?) async throws {
     #if canImport(AlarmKit)
-      let alarm = CALarm.alarm(dateComponents: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date), text: title)
+      let dateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+      let action = CAAlarmAction.alert(title: title, subtitle: body ?? "")
+      let alarm = CAAlarm(alarmAction: action, nextTriggerDate: date)
       if repeating, let interval = repeatInterval {
-        alarm.repeatInterval = .minute(Int(interval / 1000))
+        alarm.recurringAlarmInterval = CAAlarm.RecurringAlarmInterval.minute(Int(interval / 1000))
       }
-      let alarmItem = CAAlarmItem(identifier: identifier, action: UIMutableUserNotificationAction(), alarms: [alarm])
-      try await CAAlarm.set(alarmItem)
+      let alarmItem = CAAlarmItem(identifier: identifier, alarms: [alarm])
+      try await CAAlarm.set([alarmItem])
     #else
       // Fallback to notifications if AlarmKit isn't available
       try await scheduleWithNotifications(identifier: identifier, title: title, body: body, date: date, repeating: repeating, repeatInterval: repeatInterval, sound: sound)
