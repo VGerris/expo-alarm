@@ -9,17 +9,17 @@
     </style>
 
     <style name="NoAnimation">
-        <item name="android:activityOpenEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:activityOpenExitAnimation">@android:anim/no_animation</item>
-        <item name="android:activityCloseEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:activityCloseExitAnimation">@android:anim/no_animation</item>
-        <item name="android:taskOpenEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:taskOpenExitAnimation">@android:anim/no_animation</item>
-        <item name="android:taskCloseEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:taskCloseExitAnimation">@android:anim/no_animation</item>
-        <item name="android:taskToFrontEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:taskToFrontExitAnimation">@android:anim/no_animation</item>
-        <item name="android:taskToBackEnterAnimation">@android:anim/no_animation</item>
-        <item name="android:taskToBackExitAnimation">@android:anim/no_animation</item>
+        <item name="android:activityOpenEnterAnimation">@anim/no_animation</item>
+        <item name="android:activityOpenExitAnimation">@anim/no_animation</item>
+        <item name="android:activityCloseEnterAnimation">@anim/no_animation</item>
+        <item name="android:activityCloseExitAnimation">@anim/no_animation</item>
+        <item name="android:taskOpenEnterAnimation">@anim/no_animation</item>
+        <item name="android:taskOpenExitAnimation">@anim/no_animation</item>
+        <item name="android:taskCloseEnterAnimation">@anim/no_animation</item>
+        <item name="android:taskCloseExitAnimation">@anim/no_animation</item>
+        <item name="android:taskToFrontEnterAnimation">@anim/no_animation</item>
+        <item name="android:taskToFrontExitAnimation">@anim/no_animation</item>
+        <item name="android:taskToBackEnterAnimation">@anim/no_animation</item>
+        <item name="android:taskToBackExitAnimation">@anim/no_animation</item>
     </style>
 </resources>
