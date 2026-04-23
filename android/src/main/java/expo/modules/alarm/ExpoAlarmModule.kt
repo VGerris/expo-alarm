@@ -126,10 +126,16 @@ class ExpoAlarmModule : Module() {
         val identifier = alarmData["identifier"] as String
         val title = alarmData["title"] as String
         val body = alarmData["body"] as? String
-        val dateMillis = (alarmData["date"] as Double).toLong()
+        var dateMillis = (alarmData["date"] as Double).toLong()
         val repeating = alarmData["repeating"] as? Boolean ?: false
         val repeatInterval = (alarmData["repeatInterval"] as? Double)?.toLong()
         val sound = alarmData["sound"] as? String
+
+        // If the scheduled time is in the past, advance to the next day
+        val now = System.currentTimeMillis()
+        if (!repeating && dateMillis <= now) {
+          dateMillis += 24 * 60 * 60 * 1000L
+        }
 
         // Cancel existing alarm with same identifier
         cancelAlarmInternal(identifier)
