@@ -14,10 +14,6 @@ public class ExpoAlarmModule: NSObject, AnyModule {
     self.appContext = appContext
   }
 
-  public init() {
-    super.init()
-  }
-
   private var storedAlarms: [String: [String: Any]] = [:]
   private let userDefaults = UserDefaults.standard
   private let alarmsKey = "ExpoAlarmModule_alarms"
