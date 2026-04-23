@@ -194,6 +194,12 @@ class ExpoAlarmModule : Module() {
     AsyncFunction("cancelAlarmAsync") { identifier: String, promise: Promise ->
       try {
         cancelAlarmInternal(identifier)
+        // Also stop the AlarmService if it's currently firing
+        val serviceIntent = Intent(context, com.expo.modules.alarm.AlarmService::class.java).apply {
+          action = "STOP_ALARM"
+          putExtra("identifier", identifier)
+        }
+        context.stopService(serviceIntent)
         promise.resolve(null)
       } catch (e: Exception) {
         promise.reject("ERR_ALARM_CANCEL", e.message, e)

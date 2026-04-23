@@ -6,8 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import expo.modules.alarm.ExpoAlarmModule
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -58,18 +56,7 @@ class AlarmReceiver : BroadcastReceiver() {
             context.startService(serviceIntent)
         }
 
-        // Also show a notification as a fallback
-        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setContentIntent(null)
-
-        val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.notify(com.expo.modules.alarm.AlarmService.notificationIdFor(identifier), notificationBuilder.build())
+        // Notification is handled by AlarmService (foreground service with dismiss action)
     }
 
     private fun createNotificationChannel(context: Context) {
