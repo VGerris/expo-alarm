@@ -7,7 +7,17 @@ import AlarmKit
 #endif
 
 @objc(ExpoAlarmModule)
-public class ExpoAlarmModule: BaseModule {
+public class ExpoAlarmModule: NSObject, AnyModule {
+  public private(set) weak var appContext: AppContext?
+
+  public required init(appContext: AppContext) {
+    self.appContext = appContext
+  }
+
+  public init() {
+    super.init()
+  }
+
   private var storedAlarms: [String: [String: Any]] = [:]
   private let userDefaults = UserDefaults.standard
   private let alarmsKey = "ExpoAlarmModule_alarms"
