@@ -31,7 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val sound = intent.getStringExtra(EXTRA_SOUND)
 
         // Emit alarmTriggered event to React Native
-        ExpoAlarmModule.instance?.emit("alarmTriggered", mapOf(
+        expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmTriggered", mapOf(
             "identifier" to identifier,
             "title" to title,
             "body" to body
@@ -73,7 +73,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
         // Also show a notification as a fallback
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.expo_alarm_icon)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

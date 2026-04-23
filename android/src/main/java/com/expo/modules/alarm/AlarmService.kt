@@ -3,14 +3,16 @@ package com.expo.modules.alarm
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.app.PendingIntent
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.expo.modules.alarm.receivers.AlarmReceiver
 import expo.modules.alarm.ExpoAlarmModule
 
@@ -19,6 +21,15 @@ class AlarmService : Service() {
         private const val CHANNEL_ID = "alarm_service_channel"
         private const val CHANNEL_NAME = "Alarm Service"
         private const val NOTIFICATION_ID = 1
+
+        // Deterministic notification ID to avoid hashCode collisions
+        fun notificationIdFor(identifier: String): Int {
+            var hash = 1
+            for (c in identifier) {
+                hash = 31 * hash + c.code
+            }
+            return hash.coerceIn(0, Int.MAX_VALUE / 2)
+        }
     }
 
     private var vibrator: Vibrator? = null
@@ -34,17 +45,16 @@ class AlarmService : Service() {
                 val identifier = intent.getStringExtra(AlarmReceiver.EXTRA_IDENTIFIER) ?: "default"
                 val title = intent.getStringExtra(AlarmReceiver.EXTRA_TITLE) ?: "Alarm"
 
+                startVibration()
+
                 val notification = createServiceNotification(title, identifier)
                 startForeground(NOTIFICATION_ID, notification)
 
-                startVibration()
-
                 // Notify React Native that alarm is firing
-                android.util.Log.d("ExpoAlarm", "Service START_ALARM: about to send alarmTriggered for $identifier")
                 expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmTriggered", mapOf("identifier" to identifier))
             }
             "STOP_ALARM" -> {
-                val identifier = intent.getStringExtra("identifier") ?: "default"
+                val identifier = intent.getStringExtra(AlarmReceiver.EXTRA_IDENTIFIER) ?: "default"
                 stopAlarm(identifier)
             }
         }
@@ -93,16 +103,17 @@ class AlarmService : Service() {
 
         // Notify React Native
         expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmDismissed", mapOf("identifier" to identifier))
+
+        // Clear firing state
+        val prefs = getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("is_alarm_firing", false).remove("firing_alarm_id").apply()
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
+            val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
                 description = "Channel for alarm service notifications"
-                enableLights(true)
-                enableVibration(true)
-                lightColor = 0xFF007AFF.toInt()
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java) as NotificationManager
@@ -138,8 +149,8 @@ class AlarmService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText("Alarm is ringing")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSmallIcon(R.drawable.expo_alarm_icon)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setContentIntent(pendingLaunch)
             .setAutoCancel(false)

@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import android.widget.LinearLayout
+import com.expo.modules.alarm.receivers.AlarmReceiver
 
 class AlarmActivity : Activity() {
     private var alarmIdentifier: String? = null
@@ -24,7 +25,8 @@ class AlarmActivity : Activity() {
             WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
             WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         )
         window.setGravity(Gravity.CENTER)
 
@@ -115,6 +117,12 @@ class AlarmActivity : Activity() {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+
+        // Dismiss notification
+        val notificationManager = androidx.core.app.NotificationManagerCompat.from(this)
+        notificationManager.cancel(AlarmService.notificationIdFor(alarmIdentifier ?: "default"))
+
+        finish()
     }
 
     override fun onDestroy() {

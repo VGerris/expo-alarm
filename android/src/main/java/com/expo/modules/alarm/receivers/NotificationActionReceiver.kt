@@ -10,9 +10,9 @@ import com.expo.modules.alarm.AlarmService
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val identifier = intent.getStringExtra(EXTRA_IDENTIFIER) ?: return
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Alarm"
-        val body = intent.getStringExtra(EXTRA_BODY)
+        val identifier = intent.getStringExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER) ?: return
+        val title = intent.getStringExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_TITLE) ?: "Alarm"
+        val body = intent.getStringExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_BODY)
         val action = intent.action
 
         when (action) {
@@ -33,7 +33,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Stop the alarm service if running
         val serviceIntent = Intent(context, com.expo.modules.alarm.AlarmService::class.java).apply {
             action = "STOP_ALARM"
-            putExtra(EXTRA_IDENTIFIER, identifier)
+            putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER, identifier)
         }
         context.startService(serviceIntent)
 
@@ -41,7 +41,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val cancelIntent = Intent(context, AlarmReceiver::class.java).apply {
-                putExtra(EXTRA_IDENTIFIER, identifier)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER, identifier)
             }
             val pendingIntent = android.app.PendingIntent.getBroadcast(
                 context,
@@ -61,7 +61,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         // Stop the current alarm service
         val serviceIntent = Intent(context, com.expo.modules.alarm.AlarmService::class.java).apply {
             action = "STOP_ALARM"
-            putExtra(EXTRA_IDENTIFIER, identifier)
+            putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER, identifier)
         }
         context.startService(serviceIntent)
 
@@ -71,11 +71,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val newDate = System.currentTimeMillis() + snoozeMillis
 
             val intent = Intent(context, AlarmReceiver::class.java).apply {
-                putExtra(EXTRA_IDENTIFIER, identifier)
-                putExtra(EXTRA_TITLE, title)
-                putExtra(EXTRA_BODY, body)
-                putExtra(EXTRA_REPEATING, false)
-                putExtra(EXTRA_REPEAT_INTERVAL, 0L)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_IDENTIFIER, identifier)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_TITLE, title)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_BODY, body)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_REPEATING, false)
+                putExtra(com.expo.modules.alarm.receivers.AlarmReceiver.EXTRA_REPEAT_INTERVAL, 0L)
             }
 
             val pendingIntent = android.app.PendingIntent.getBroadcast(
