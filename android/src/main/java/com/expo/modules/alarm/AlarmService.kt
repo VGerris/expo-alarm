@@ -95,12 +95,6 @@ class AlarmService : Service() {
         stopForeground(true)
         stopSelf()
 
-        // Send broadcast to AlarmActivity that dismiss is confirmed
-        val broadcastIntent = Intent("com.expo.modules.alarm.DISMISS_CONFIRMED").apply {
-            putExtra("identifier", identifier)
-        }
-        sendBroadcast(broadcastIntent)
-
         // Notify React Native
         expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmDismissed", mapOf("identifier" to identifier))
 

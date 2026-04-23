@@ -2,7 +2,6 @@ package com.expo.modules.alarm.receivers
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -59,18 +58,6 @@ class AlarmReceiver : BroadcastReceiver() {
             context.startService(serviceIntent)
         }
 
-        // Launch AlarmActivity to show alarm UI over lock screen
-        val activityIntent = Intent(context, com.expo.modules.alarm.AlarmActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("identifier", identifier)
-            putExtra("title", title)
-            putExtra("body", body)
-            putExtra("sound", sound)
-        }
-        context.startActivity(activityIntent)
-
         // Also show a notification as a fallback
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -79,7 +66,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setContentIntent(createOpenActivityPendingIntent(context, identifier, title, body))
+            .setContentIntent(null)
 
         val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(com.expo.modules.alarm.AlarmService.notificationIdFor(identifier), notificationBuilder.build())
@@ -99,23 +86,5 @@ class AlarmReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun createOpenActivityPendingIntent(
-        context: Context,
-        identifier: String,
-        title: String,
-        body: String?
-    ): PendingIntent? {
-        val activityIntent = Intent(context, com.expo.modules.alarm.AlarmActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_IDENTIFIER, identifier)
-            putExtra(EXTRA_TITLE, title)
-            putExtra(EXTRA_BODY, body)
-        }
-        return PendingIntent.getActivity(
-            context,
-            identifier.hashCode(),
-            activityIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
+    // AlarmActivity is no longer launched — RN AlarmModal handles the UI
 }
