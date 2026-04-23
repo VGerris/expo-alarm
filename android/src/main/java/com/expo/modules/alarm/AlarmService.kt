@@ -98,9 +98,14 @@ class AlarmService : Service() {
         // Notify React Native
         expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmDismissed", mapOf("identifier" to identifier))
 
-        // Clear firing state
+        // Clear firing state and mark as dismissed to prevent duplicate re-trigger
         val prefs = getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("is_alarm_firing", false).remove("firing_alarm_id").apply()
+        prefs.edit()
+            .putBoolean("is_alarm_firing", false)
+            .remove("firing_alarm_id")
+            .putString("dismissed_alarm_id", identifier)
+            .putLong("dismissed_alarm_time", System.currentTimeMillis())
+            .apply()
     }
 
     private fun createNotificationChannel() {

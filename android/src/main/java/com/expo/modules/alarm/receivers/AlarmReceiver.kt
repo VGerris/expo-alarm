@@ -27,6 +27,15 @@ class AlarmReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra(EXTRA_BODY)
         val sound = intent.getStringExtra(EXTRA_SOUND)
 
+        // Ignore if this alarm was already dismissed
+        val prefs = context.getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
+        val dismissedId = prefs.getString("dismissed_alarm_id", null)
+        val dismissedAt = prefs.getLong("dismissed_alarm_time", 0)
+        if (dismissedId == identifier && System.currentTimeMillis() - dismissedAt < 3000) {
+            // Same alarm dismissed within 3 seconds — ignore duplicate delivery
+            return
+        }
+
         // Emit alarmTriggered event to React Native
         expo.modules.alarm.ExpoAlarmModule.sendEvent("alarmTriggered", mapOf(
             "identifier" to identifier,
@@ -35,7 +44,6 @@ class AlarmReceiver : BroadcastReceiver() {
         ))
 
         // Persist firing state so React Native can detect it on resume
-        val prefs = context.getSharedPreferences("ExpoAlarmModule", Context.MODE_PRIVATE)
         prefs.edit().putBoolean("is_alarm_firing", true).putString("firing_alarm_id", identifier).apply()
 
         createNotificationChannel(context)
