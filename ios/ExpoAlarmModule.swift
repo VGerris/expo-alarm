@@ -10,8 +10,8 @@ public class ExpoAlarmModule: Module {
   private var storedAlarms: [String: [String: Any]] = [:]
   private let userDefaults = UserDefaults.standard
   private let alarmsKey = "ExpoAlarmModule_alarms"
-  
-  public override func definition() -> ModuleDefinition {
+
+  public func definition() {
     Name("ExpoAlarm")
 
     Events("alarmTriggered", "alarmDismissed")
@@ -30,7 +30,7 @@ public class ExpoAlarmModule: Module {
           promise.reject("ERR_PERMISSIONS", error.localizedDescription, error)
           return
         }
-        
+
         promise.resolve([
           "granted": granted,
           "canAskAgain": !granted
@@ -56,17 +56,17 @@ public class ExpoAlarmModule: Module {
           promise.reject("ERR_INVALID_ARGS", "Missing required fields", nil)
           return
         }
-        
+
         let body = alarmData["body"] as? String
         let repeating = alarmData["repeating"] as? Bool ?? false
         let repeatInterval = alarmData["repeatInterval"] as? Double
         let sound = alarmData["sound"] as? String
-        
+
         let date = Date(timeIntervalSince1970: dateMillis / 1000)
-        
+
         // Cancel existing alarm with same identifier
         await self.cancelAlarmInternal(identifier: identifier)
-        
+
         #if canImport(AlarmKit)
         if #available(iOS 16.0, *) {
           // Use AlarmKit for iOS 16+
@@ -103,7 +103,7 @@ public class ExpoAlarmModule: Module {
           sound: sound
         )
         #endif
-        
+
         // Store alarm info
         let alarmInfo: [String: Any] = [
           "identifier": identifier,
@@ -115,10 +115,10 @@ public class ExpoAlarmModule: Module {
           "sound": sound ?? NSNull(),
           "enabled": true
         ]
-        
+
         self.saveAlarmInfo(identifier: identifier, alarmInfo: alarmInfo)
         promise.resolve(nil)
-        
+
       } catch {
         promise.reject("ERR_ALARM_SCHEDULE", error.localizedDescription, error)
       }
