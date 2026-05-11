@@ -133,6 +133,53 @@ public class ExpoAlarmModule: NSObject, AnyModule {
       let hasAlarm = self.getStoredAlarmInfo(identifier: identifier) != nil
       promise.resolve(hasAlarm)
     }
+
+    AsyncFunction("setAlarmEnabledAsync") { (input: [String: Any], promise: Promise) in
+      let identifier = input["identifier"] as? String
+      let enabled = input["enabled"] as? Bool ?? true
+
+      guard let identifier = identifier else {
+        promise.reject("ERR_INVALID_ARGS", "Missing identifier")
+        return
+      }
+
+      guard let alarmInfo = self.getStoredAlarmInfo(identifier: identifier) else {
+        promise.reject("ERR_ALARM_NOT_FOUND", "Alarm with identifier '\(identifier)' not found")
+        return
+      }
+
+      if enabled {
+        // Re-enable: cancel any existing pending notification first, then re-schedule
+        await self.cancelAlarmInternal(identifier: identifier)
+        do {
+          try await self.scheduleWithNotifications(
+            identifier: identifier,
+            title: alarmInfo["title"] as? String ?? "",
+            body: alarmInfo["body"] as? String,
+            date: Date(timeIntervalSince1970: (alarmInfo["date"] as? Double ?? 0) / 1000),
+            repeating: alarmInfo["repeating"] as? Bool ?? false,
+            repeatInterval: alarmInfo["repeatInterval"] as? Double,
+            sound: alarmInfo["sound"] as? String
+          )
+        } catch {
+          promise.reject("ERR_ALARM_ENABLE", "Failed to re-schedule alarm: \(error.localizedDescription)")
+          return
+        }
+        // Update enabled flag in stored info
+        var updatedInfo = alarmInfo
+        updatedInfo["enabled"] = true
+        self.saveAlarmInfo(identifier: identifier, alarmInfo: updatedInfo)
+      } else {
+        // Disable: cancel the pending notification but keep the stored alarm
+        await self.cancelAlarmInternal(identifier: identifier)
+        // Update enabled flag in stored info
+        var updatedInfo = alarmInfo
+        updatedInfo["enabled"] = false
+        self.saveAlarmInfo(identifier: identifier, alarmInfo: updatedInfo)
+      }
+
+      promise.resolve(nil)
+    }
   }
  
   private func scheduleWithNotifications(identifier: String, title: String, body: String?, date: Date, repeating: Bool, repeatInterval: Double?, sound: String?) async throws {

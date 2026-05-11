@@ -49,3 +49,10 @@ export type AlarmTriggeredEventPayload = {
 export type AlarmDismissedEventPayload = {
   identifier: string;
 };
+
+export type SetAlarmEnabledInput = {
+  /** Unique identifier for the alarm */
+  identifier: string;
+  /** Whether the alarm should be enabled */
+  enabled: boolean;
+};

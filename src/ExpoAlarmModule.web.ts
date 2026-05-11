@@ -11,8 +11,8 @@ class ExpoAlarmModule extends NativeModule<ExpoAlarmModuleEvents> {
   private timeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   isSupported(): boolean {
-    // Web platform has limited alarm capabilities
-    return false;
+    // Web platform supports alarms via browser notifications + setTimeout
+    return "Notification" in window;
   }
 
   async requestPermissionsAsync(): Promise<{
@@ -133,6 +133,46 @@ class ExpoAlarmModule extends NativeModule<ExpoAlarmModuleEvents> {
 
   async hasAlarmAsync(identifier: string): Promise<boolean> {
     return this.alarms.has(identifier);
+  }
+
+  async setAlarmEnabledAsync(input: {
+    identifier: string;
+    enabled: boolean;
+  }): Promise<void> {
+    const alarm = this.alarms.get(input.identifier);
+    if (!alarm) {
+      throw new Error(`Alarm with identifier '${input.identifier}' not found`);
+    }
+
+    if (input.enabled) {
+      // Re-enable: clear any existing timeout and reschedule
+      const existingTimeout = this.timeouts.get(input.identifier);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        this.timeouts.delete(input.identifier);
+      }
+
+      const now = new Date().getTime();
+      const delay = alarm.date.getTime() - now;
+
+      if (delay > 0) {
+        const timeout = setTimeout(() => {
+          this.triggerAlarm(alarm);
+        }, delay);
+        this.timeouts.set(input.identifier, timeout);
+      }
+      // If delay <= 0, the alarm time has passed -- leave it disabled
+      // (it will fire when the page is reloaded with a future date)
+    } else {
+      // Disable: clear the timeout and mark as disabled
+      const existingTimeout = this.timeouts.get(input.identifier);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        this.timeouts.delete(input.identifier);
+      }
+      const updatedAlarm = { ...alarm, enabled: false };
+      this.alarms.set(input.identifier, updatedAlarm);
+    }
   }
 }
 

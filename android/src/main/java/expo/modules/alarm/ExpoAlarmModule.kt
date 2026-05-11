@@ -254,6 +254,91 @@ class ExpoAlarmModule : Module() {
         promise.reject("ERR_ALARM_HAS", e.message, e)
       }
     }
+
+    AsyncFunction("setAlarmEnabledAsync") { (input: Map<String, Any>, promise: Promise) -> Unit ->
+      try {
+        val identifier = input["identifier"] as? String
+        val enabled = input["enabled"] as? Boolean ?: true
+
+        if (identifier == null) {
+          promise.reject("ERR_INVALID_ARGS", "Missing identifier")
+          return@AsyncFunction
+        }
+
+        val alarmInfo = getStoredAlarmInfo(identifier)
+        if (alarmInfo == null) {
+          promise.reject("ERR_ALARM_NOT_FOUND", "Alarm with identifier '$identifier' not found")
+          return@AsyncFunction
+        }
+
+        if (enabled) {
+          // Re-enable: cancel any existing pending intent first, then re-schedule
+          cancelAlarmInternal(identifier)
+          val title = alarmInfo["title"] as? String ?: ""
+          val body = alarmInfo["body"] as? String
+          val dateMillis = (alarmInfo["date"] as? Number)?.toLong() ?: 0L
+          val repeating = alarmInfo["repeating"] as? Boolean ?: false
+          val repeatInterval = (alarmInfo["repeatInterval"] as? Number)?.toLong()
+          val sound = alarmInfo["sound"] as? String
+
+          val date = Date(timeInMillis = dateMillis)
+
+          // Create alarm intent
+          val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra("identifier", identifier)
+            putExtra("title", title)
+            putExtra("body", body)
+            putExtra("repeating", repeating)
+            putExtra("repeatInterval", repeatInterval)
+            putExtra("sound", sound)
+          }
+
+          val requestCode = identifier.hashCode()
+          val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+          )
+
+          // Schedule alarm
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            throw Exception("Exact alarm permission not granted")
+          }
+
+          if (repeating && repeatInterval != null) {
+            alarmManager.setRepeating(
+              AlarmManager.RTC_WAKEUP,
+              dateMillis,
+              repeatInterval,
+              pendingIntent
+            )
+          } else {
+            alarmManager.setExactAndAllowWhileIdle(
+              AlarmManager.RTC_WAKEUP,
+              dateMillis,
+              pendingIntent
+            )
+          }
+
+          // Update enabled flag in stored info
+          val updatedInfo = alarmInfo.toMutableMap()
+          updatedInfo["enabled"] = true
+          saveAlarmInfo(identifier, updatedInfo)
+        } else {
+          // Disable: cancel the pending alarm but keep the stored alarm
+          cancelAlarmInternal(identifier)
+          // Update enabled flag in stored info
+          val updatedInfo = alarmInfo.toMutableMap()
+          updatedInfo["enabled"] = false
+          saveAlarmInfo(identifier, updatedInfo)
+        }
+
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("ERR_ALARM_ENABLE", e.message, e)
+      }
+    }
   }
 
   private fun cancelAlarmInternal(identifier: String) {

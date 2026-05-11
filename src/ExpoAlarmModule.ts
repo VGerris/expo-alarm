@@ -4,6 +4,7 @@ import {
   ExpoAlarmModuleEvents,
   AlarmTriggerInput,
   AlarmInfo,
+  SetAlarmEnabledInput,
 } from "./ExpoAlarm.types";
 
 declare class ExpoAlarmModule extends NativeModule<ExpoAlarmModuleEvents> {
@@ -54,6 +55,11 @@ declare class ExpoAlarmModule extends NativeModule<ExpoAlarmModuleEvents> {
    * Check if a specific alarm exists
    */
   hasAlarmAsync(identifier: string): Promise<boolean>;
+
+  /**
+   * Enable or disable a specific alarm by identifier
+   */
+  setAlarmEnabledAsync(input: SetAlarmEnabledInput): Promise<void>;
 }
 
 // This call loads the native module object from the JSI.
