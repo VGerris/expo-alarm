@@ -255,19 +255,19 @@ class ExpoAlarmModule : Module() {
       }
     }
 
-    AsyncFunction("setAlarmEnabledAsync") { (input: Map<String, Any>, promise: Promise) -> Unit ->
+    AsyncFunction("setAlarmEnabledAsync") { input: Map<String, Any>, promise: Promise ->
       try {
         val identifier = input["identifier"] as? String
         val enabled = input["enabled"] as? Boolean ?: true
 
         if (identifier == null) {
-          promise.reject("ERR_INVALID_ARGS", "Missing identifier")
+          promise.reject("ERR_INVALID_ARGS", "Missing identifier", null)
           return@AsyncFunction
         }
 
         val alarmInfo = getStoredAlarmInfo(identifier)
         if (alarmInfo == null) {
-          promise.reject("ERR_ALARM_NOT_FOUND", "Alarm with identifier '$identifier' not found")
+          promise.reject("ERR_ALARM_NOT_FOUND", "Alarm with identifier '$identifier' not found", null)
           return@AsyncFunction
         }
 
@@ -280,8 +280,6 @@ class ExpoAlarmModule : Module() {
           val repeating = alarmInfo["repeating"] as? Boolean ?: false
           val repeatInterval = (alarmInfo["repeatInterval"] as? Number)?.toLong()
           val sound = alarmInfo["sound"] as? String
-
-          val date = Date(timeInMillis = dateMillis)
 
           // Create alarm intent
           val intent = Intent(context, AlarmReceiver::class.java).apply {
